@@ -1,26 +1,66 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+@theme {
+  --font-display: var(--font-saira);
+  --font-sans: var(--font-hanken);
+
+  --color-bg: #0b0a0f;
+  --color-brand: #ff4d5e;
+  --color-brand-hi: #ff6473;
+  --color-ink: #edeaf2;
+  --color-ink-dim: #cfc9da;
+  --color-ink-soft: #a39db2;
+  --color-ink-faint: #8a8499;
+  --color-ink-mute: #6b6577;
+  --color-panel: #100e16;
+
+  --animate-flood: flood 14s ease-in-out infinite alternate;
+  --animate-card-reveal: card-reveal 0.7s cubic-bezier(0.2, 0.85, 0.25, 1);
+  --animate-glow: glow 3.4s ease-in-out infinite;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+@layer base {
+  html,
+  body {
+    margin: 0;
+    padding: 0;
+  }
+  body {
+    background: var(--color-bg);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+  }
+  ::selection {
+    background: var(--color-brand);
+    color: #fff;
+  }
+  ::placeholder {
+    color: var(--color-ink-mute);
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+@keyframes flood {
+  0% {
+    transform: translate(-52%, 0);
+  }
+  100% {
+    transform: translate(-48%, 0);
+  }
+}
+@keyframes card-reveal {
+  0% {
+    transform: translateY(12px) scale(0.955);
+  }
+  100% {
+    transform: translateY(0) scale(1);
+  }
+}
+@keyframes glow {
+  0%,
+  100% {
+    opacity: 0.55;
+  }
+  50% {
+    opacity: 0.85;
+  }
 }

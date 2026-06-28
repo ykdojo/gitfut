@@ -11,7 +11,15 @@ import type { Card } from "@/lib/scoring/types";
 // updates the card in view, reflects the choice in the URL (?country=, removed
 // when cleared) so a re-share / reload keeps it, and writes the localStorage
 // cache so the home flow sees the same choice within the TTL.
-export default function ScoutRoute({ card: initial }: { card: Card }) {
+export default function ScoutRoute({
+  card: initial,
+  shareSig,
+  generateShare,
+}: {
+  card: Card;
+  shareSig?: string;
+  generateShare?: boolean;
+}) {
   const router = useRouter();
   const [card, setCard] = useState(initial);
 
@@ -31,6 +39,8 @@ export default function ScoutRoute({ card: initial }: { card: Card }) {
       card={card}
       onBack={() => router.push("/")}
       onCountryChange={onCountryChange}
+      shareSig={shareSig}
+      generateShare={generateShare}
     />
   );
 }

@@ -13,6 +13,7 @@ import { needsIpFallback, pickFlag } from "@/lib/flagPriority";
 import { recordScout } from "@/lib/analytics";
 import type { Card } from "@/lib/scoring/types";
 import ScoutRoute from "./ScoutRoute";
+import { getCardImage, signLogin } from "@/lib/cardImage";
 
 export const dynamic = "force-dynamic"; // per-user, token-gated, always fresh
 
@@ -37,11 +38,15 @@ export async function generateMetadata({ params }: { params: Promise<{ username:
   const { username } = await params;
   const res = await loadCard(username);
   if ("card" in res) {
+    const img = await getCardImage(res.card.login);
     return {
       title: `${res.card.name} — ${res.card.overall} ${res.card.finishLabel} · GitFut`,
       description: `${res.card.name} scouted on GitFut: ${res.card.overall} OVR ${res.card.position}, ${res.card.archetype}.`,
       alternates: { canonical: `/${res.card.login}` },
       twitter: { card: "summary_large_image" },
+      // Exact card (rendered client-side, stored in Blob) once it exists; until
+      // then the file-convention opengraph-image.tsx provides the fallback.
+      openGraph: img ? { images: [img.url] } : undefined,
     };
   }
   // Not a real profile — keep these soft-404s out of the index.
@@ -85,15 +90,24 @@ export default async function Page({
   // here — a per-visit lookup on every shared card isn't worth it; the edge header
   // covers production visitors.)
   let card: Card | null = "card" in res ? res.card : null;
+  let generateShare = false;
+  let shareSig = "";
   if (card) {
     after(() => recordScout()); // analytics, flushed after the response (serverless-safe)
     const ip = needsIpFallback(override, card.country) ? countryFromHeaders(await headers()) : null;
     card = { ...card, country: pickFlag(override, card.country, ip) ?? "" };
+    const img = await getCardImage(card.login);
+    generateShare = !img || img.stale; // (re)generate the share image if missing/stale
+    shareSig = signLogin(card.login);
   }
   return (
     <div className="relative min-h-screen overflow-x-hidden text-ink">
       <Background />
-      {card ? <ScoutRoute card={card} /> : <NotScouted username={username} error={(res as { error: GithubError }).error} />}
+      {card ? (
+        <ScoutRoute card={card} shareSig={shareSig} generateShare={generateShare} />
+      ) : (
+        <NotScouted username={username} error={(res as { error: GithubError }).error} />
+      )}
     </div>
   );
 }

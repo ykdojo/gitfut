@@ -5,6 +5,7 @@ import { ArrowLeft } from "lucide-react";
 import type { Card } from "@/lib/scoring/types";
 import PlayerCard from "./PlayerCard";
 import CardActions from "./CardActions";
+import CardImageSync from "./CardImageSync";
 import FlagPicker from "./FlagPicker";
 import Mascot from "./Mascot";
 import { AttributesPanel, MetricsPanel, ReportHeader } from "./ScoutReport";
@@ -17,6 +18,10 @@ interface Props {
   onBack: () => void;
   /** Edit the card's flag from the report (click-the-flag picker). */
   onCountryChange: (code: string) => void;
+  /** HMAC that authorises this browser to upload the card's share image. */
+  shareSig?: string;
+  /** When true (image missing/stale), render + upload the share image to Blob. */
+  generateShare?: boolean;
 }
 
 // Card width scales with the viewport but is bounded by BOTH width and height
@@ -30,7 +35,7 @@ const CONFETTI: Record<string, string[]> = {
   totw: ["#39d353", "#e9cc74", "#ffffff", "#7fa8ff"],
 };
 
-export default function ResultView({ card, onBack, onCountryChange }: Props) {
+export default function ResultView({ card, onBack, onCountryChange, shareSig, generateShare }: Props) {
   const captureRef = useRef<HTMLDivElement>(null);
   const theme = RESULT_THEME[card.finish];
   const phase = useReveal(card.finish);
@@ -128,6 +133,9 @@ export default function ResultView({ card, onBack, onCountryChange }: Props) {
         </div>
       </div>
 
+      {generateShare && shareSig && (
+        <CardImageSync targetRef={captureRef} login={card.login} sig={shareSig} />
+      )}
     </main>
   );
 }

@@ -13,6 +13,7 @@ import BuyMeACoffee from "./BuyMeACoffee";
 import GithubStar from "./GithubStar";
 import HowItWorksModal from "./HowItWorksModal";
 import { AttributesPanel, MetricsPanel, ReportHeader } from "./ScoutReport";
+import DistributionPanel from "./DistributionPanel";
 import { resolveResultTheme } from "./finishTheme";
 import { useReveal } from "@/hooks/useReveal";
 import { burstConfetti } from "@/lib/confetti";
@@ -186,10 +187,11 @@ export default function ResultView({
           </div>
         </div>
 
-        {/* right — scouting metrics */}
+        {/* right — scouting metrics + distribution */}
         <div className="flex max-[980px]:order-3 max-[980px]:w-full max-[980px]:max-w-[420px] max-[980px]:justify-center">
-          <div className="w-full max-w-[360px]">
+          <div className="flex w-full max-w-[360px] flex-col gap-[14px]">
             <MetricsPanel card={card} />
+            <DistributionPanel card={card} />
           </div>
         </div>
       </div>

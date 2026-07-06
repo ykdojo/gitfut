@@ -3,7 +3,7 @@ import { round2 } from "./format";
 // Pure, deterministic geometry for the VS lightning burst — path strings, the
 // sliver polygon, and the particle spray. NO "use client" and no React hooks:
 // this module is consumed by both the live DuelView and the Satori OG poster
-// (app/[username]/vs/[opponent]/opengraph-image.tsx), so it must stay pure.
+// (app/[username]/vs/[opponent]/poster.png/route.tsx), so it must stay pure.
 // Its sibling geometry lib is lib/radar.ts; the SVG dressing is the component's.
 
 type Pt = [number, number];
@@ -73,22 +73,32 @@ export const S_PATH = letterPath(S_PTS, 0.3, 0, 0.86, 52, 66);
 // ---- the lightning sliver: bottom-left tip to top-right tip ----
 const T1: Pt = [14, 158];
 const T2: Pt = [106, 12];
-const CX = (T1[0] + T2[0]) / 2;
-const CY = (T1[1] + T2[1]) / 2;
 const DX = T2[0] - T1[0];
 const DY = T2[1] - T1[1];
 const LEN = Math.hypot(DX, DY);
 const NX = -DY / LEN;
 const NY = DX / LEN;
 
-// A sliver of the given half-width: both tips sharp, widest at the centre.
-export const sliver = (hw: number): string =>
-  [
-    `${T1[0]},${T1[1]}`,
-    `${round2(CX + NX * hw)},${round2(CY + NY * hw)}`,
-    `${T2[0]},${T2[1]}`,
-    `${round2(CX - NX * hw)},${round2(CY - NY * hw)}`,
+// A sliver between two arbitrary tips: both sharp, widest at the centre. The
+// in-box VS bolt and the full-canvas fixture-poster bolt share this shape.
+export function sliverBetween(t1: Pt, t2: Pt, hw: number): string {
+  const cx = (t1[0] + t2[0]) / 2;
+  const cy = (t1[1] + t2[1]) / 2;
+  const dx = t2[0] - t1[0];
+  const dy = t2[1] - t1[1];
+  const len = Math.hypot(dx, dy);
+  const nx = -dy / len;
+  const ny = dx / len;
+  return [
+    `${t1[0]},${t1[1]}`,
+    `${round2(cx + nx * hw)},${round2(cy + ny * hw)}`,
+    `${t2[0]},${t2[1]}`,
+    `${round2(cx - nx * hw)},${round2(cy - ny * hw)}`,
   ].join(" ");
+}
+
+// A sliver of the given half-width: both tips sharp, widest at the centre.
+export const sliver = (hw: number): string => sliverBetween(T1, T2, hw);
 
 export interface Particle {
   x: number;
@@ -111,6 +121,37 @@ export const PARTICLES: Particle[] = Array.from({ length: 26 }, (_, i) => {
     bright: i % 3 === 0,
   };
 });
+
+// Ember spray for the fixture poster's full-canvas bolt: deterministic like
+// PARTICLES, but clustered around the run's MIDDLE (where the VS sits) — the
+// tips sit off-canvas there, so tip clusters would never be seen.
+export function particlesAlong(
+  t1: Pt,
+  t2: Pt,
+  count: number,
+  spread: number,
+  rBase: number,
+): Particle[] {
+  const dx = t2[0] - t1[0];
+  const dy = t2[1] - t1[1];
+  const len = Math.hypot(dx, dy);
+  const nx = -dy / len;
+  const ny = dx / len;
+  return Array.from({ length: count }, (_, i) => {
+    const u = (i + 0.5) / count;
+    // pull every sample toward t=0.5 by a pseudo-random amount: dense near the
+    // VS, sparse toward the canvas edges
+    const t = 0.5 + (u - 0.5) * (0.35 + ((i * 31) % 8) / 10);
+    const off = (((i * 37) % 23) - 11) * spread;
+    return {
+      x: round2(t1[0] + dx * t + nx * off),
+      y: round2(t1[1] + dy * t + ny * off),
+      r: round2(rBase * (0.4 + ((i * 53) % 12) / 12)),
+      o: 0.35 + ((i * 29) % 45) / 100,
+      bright: i % 3 === 0,
+    };
+  });
+}
 
 // Rendered box for a given height: width derived from the design aspect.
 export function vsBurstBox(size: number): { w: number; h: number } {

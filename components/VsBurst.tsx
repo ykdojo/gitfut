@@ -9,10 +9,15 @@ import {
 } from "@/lib/vsBurst";
 
 // Brand greens (globals.css): letters brand-mid, rim brand-hi, glow brand.
-const FILL = "#26a641";
-const RIM = "#56e06b";
-const GLOW = "#39d353";
-const CORE = "#eaffe8";
+// Exported so the fixture poster paints its full-canvas strike and letters in
+// exactly this kit.
+export const VS_PALETTE = {
+  fill: "#26a641",
+  rim: "#56e06b",
+  glow: "#39d353",
+  core: "#eaffe8",
+} as const;
+const { fill: FILL, rim: RIM, glow: GLOW, core: CORE } = VS_PALETTE;
 
 export default function VsBurst({ size }: { size: number }) {
   const { w, h } = vsBurstBox(size);

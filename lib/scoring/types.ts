@@ -78,6 +78,7 @@ export interface FounderMeta {
 export interface Card {
   login: string;
   name: string;
+  cardName?: string;
   avatarUrl: string;
   // country & club are asset keys (public/badges/...), defaulted now and meant
   // to be user-editable later.

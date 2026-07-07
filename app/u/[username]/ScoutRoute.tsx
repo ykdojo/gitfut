@@ -33,12 +33,23 @@ export default function ScoutRoute({
     router.replace(url.pathname + url.search, { scroll: false });
   };
 
+  const onNameChange = (name: string) => {
+    const next = { ...card, cardName: name };
+    setCard(next);
+    writeCardCache(next);
+    const url = new URL(window.location.href);
+    if (name) url.searchParams.set("name", name);
+    else url.searchParams.delete("name");
+    router.replace(url.pathname + url.search, { scroll: false });
+  };
+
   return (
     <ResultView
       key={card.login}
       card={card}
       onBack={() => router.push("/")}
       onCountryChange={onCountryChange}
+      onNameChange={onNameChange}
       stars={stars}
       canonicalCountry={canonicalCountry}
     />

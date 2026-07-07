@@ -7,6 +7,7 @@ import PlayerCard from "./PlayerCard";
 import StoryFrame from "./StoryFrame";
 import CardActions from "./CardActions";
 import FlagPicker from "./FlagPicker";
+import CardNamePicker from "./CardNamePicker";
 import Mascot from "./Mascot";
 import FooterCredit from "./FooterCredit";
 import BuyMeACoffee from "./BuyMeACoffee";
@@ -24,6 +25,8 @@ interface Props {
   onBack: () => void;
   /** Edit the card's flag from the report (click-the-flag picker). */
   onCountryChange: (code: string) => void;
+  /** Edit the card's name from the report. */
+  onNameChange: (name: string) => void;
   /** Repo stars for the footer credit's star/repo link (null = no count shown). */
   stars?: number | null;
   /** GitHub-derived flag; share links only carry ?country= when it's overridden. */
@@ -45,6 +48,7 @@ export default function ResultView({
   card,
   onBack,
   onCountryChange,
+  onNameChange,
   stars,
   canonicalCountry = "",
 }: Props) {
@@ -135,7 +139,7 @@ export default function ResultView({
       </div>
 
       <div className="shrink-0">
-        <ReportHeader card={card} />
+        <ReportHeader card={card} onNameChange={onNameChange} />
       </div>
 
       <div className="mt-[clamp(14px,2.4vh,26px)] grid grid-cols-[1fr_auto_1fr] items-start gap-[clamp(16px,2.4vw,40px)] max-[980px]:mt-6 max-[980px]:flex max-[980px]:flex-col max-[980px]:items-center">
@@ -177,6 +181,7 @@ export default function ResultView({
               </div>
             </div>
             <FlagPicker value={card.country} onChange={onCountryChange} />
+            <CardNamePicker value={card.cardName || null} onChange={onNameChange} />
           </div>
           <div style={{ width: CARD_WIDTH }}>
             <CardActions

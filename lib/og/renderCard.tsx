@@ -139,7 +139,11 @@ export function cardTree(card: Card, assets: CardAssets, w: number) {
   const t = resolveCardTheme(card);
   const ink = t.ink;
   const full = card.name.trim();
-  const displayName = (full.length <= 9 ? full : full.split(" ").slice(-1)[0]).toUpperCase();
+  const displayName = (
+    card.cardName
+      ? card.cardName.trim()
+      : (full.length <= 9 ? full : full.split(" ").slice(-1)[0])
+  ).toUpperCase();
   const { bg, avatar, flag, logo, avW, avH } = assets;
 
   return (

@@ -64,7 +64,9 @@ function PlayerCard({ card }: { card: Card }) {
   const ink = t.ink;
   const full = card.name.trim();
   const displayName = (
-    full.length <= 9 ? full : full.split(" ").slice(-1)[0]
+    card.cardName
+      ? card.cardName.trim()
+      : (full.length <= 9 ? full : full.split(" ").slice(-1)[0])
   ).toUpperCase();
 
   const onAvatarError: React.ReactEventHandler<HTMLImageElement> = (e) => {

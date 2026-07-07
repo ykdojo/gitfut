@@ -37,22 +37,22 @@ const card = (over: Partial<Card> = {}): Card =>
 describe("share service", () => {
   it("builds the canonical card URL from the login, encoding the displayed flag", () => {
     const c = card();
-    expect(cardUrl(c, undefined, c.name)).toBe("https://gitfut.com/torvalds?country=us");
+    expect(cardUrl(c)).toBe("https://gitfut.com/torvalds?country=us");
   });
 
   it("omits the country param when the card has no flag", () => {
     const c = card({ country: "" });
-    expect(cardUrl(c, undefined, c.name)).toBe("https://gitfut.com/torvalds");
+    expect(cardUrl(c)).toBe("https://gitfut.com/torvalds");
   });
 
   it("includes name param in the URL when the name is overridden", () => {
-    const c = card({ name: "Custom Name" });
-    expect(cardUrl(c, undefined, "Linus Torvalds")).toBe("https://gitfut.com/torvalds?country=us&name=Custom+Name");
+    const c = card({ cardName: "Custom Name" });
+    expect(cardUrl(c)).toBe("https://gitfut.com/torvalds?country=us&name=Custom+Name");
   });
 
   it("X intent uses /intent/tweet (NOT /intent/post) and carries url + hashtag", () => {
     const c = card();
-    const u = intentUrl("x", c, undefined, c.name);
+    const u = intentUrl("x", c);
     expect(u).toContain("https://twitter.com/intent/tweet?");
     expect(u).not.toContain("/intent/post");
     expect(u).toContain("hashtags=GitFut");
@@ -61,14 +61,14 @@ describe("share service", () => {
 
   it("LinkedIn intent uses share-offsite with only the url (preview from OG)", () => {
     const c = card();
-    const u = intentUrl("linkedin", c, undefined, c.name);
+    const u = intentUrl("linkedin", c);
     expect(u).toContain("linkedin.com/sharing/share-offsite/?url=");
     expect(u).toContain(encodeURIComponent("https://gitfut.com/torvalds?country=us"));
   });
 
   it("WhatsApp intent puts text + url in the message", () => {
     const c = card();
-    const u = intentUrl("whatsapp", c, undefined, c.name);
+    const u = intentUrl("whatsapp", c);
     expect(u).toContain("api.whatsapp.com/send?text=");
     expect(decodeURIComponent(u)).toContain("gitfut.com/torvalds?country=us");
   });
@@ -90,7 +90,7 @@ describe("share service", () => {
 
   it("native payload carries title, brag-led text, and url", () => {
     const c = card();
-    const p = nativeSharePayload(c, undefined, c.name);
+    const p = nativeSharePayload(c);
     expect(p.title).toBe("GitFut");
     expect(p.url).toBe("https://gitfut.com/torvalds?country=us");
     expect(p.text).toBe(shareMessage(card()));

@@ -15,12 +15,10 @@ export default function ScoutRoute({
   card: initial,
   stars,
   canonicalCountry,
-  canonicalName,
 }: {
   card: Card;
   stars: number | null;
   canonicalCountry: string;
-  canonicalName: string;
 }) {
   const router = useRouter();
   const [card, setCard] = useState(initial);
@@ -36,7 +34,7 @@ export default function ScoutRoute({
   };
 
   const onNameChange = (name: string) => {
-    const next = { ...card, name: name };
+    const next = { ...card, cardName: name };
     setCard(next);
     writeCardCache(next);
     const url = new URL(window.location.href);
@@ -54,7 +52,6 @@ export default function ScoutRoute({
       onNameChange={onNameChange}
       stars={stars}
       canonicalCountry={canonicalCountry}
-      canonicalName={canonicalName}
     />
   );
 }

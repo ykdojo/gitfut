@@ -7,6 +7,7 @@ import PlayerCard from "./PlayerCard";
 import StoryFrame from "./StoryFrame";
 import CardActions from "./CardActions";
 import FlagPicker from "./FlagPicker";
+import CardNamePicker from "./CardNamePicker";
 import Mascot from "./Mascot";
 import FooterCredit from "./FooterCredit";
 import BuyMeACoffee from "./BuyMeACoffee";
@@ -30,8 +31,6 @@ interface Props {
   stars?: number | null;
   /** GitHub-derived flag; share links only carry ?country= when it's overridden. */
   canonicalCountry?: string;
-  /** GitHub-derived name; share links only carry ?name= when it's overridden. */
-  canonicalName?: string;
 }
 
 // Card width scales with the viewport but is bounded by BOTH width and height
@@ -52,7 +51,6 @@ export default function ResultView({
   onNameChange,
   stars,
   canonicalCountry = "",
-  canonicalName = "",
 }: Props) {
   const captureRef = useRef<HTMLDivElement>(null);
   const storyRef = useRef<HTMLDivElement>(null);
@@ -183,6 +181,7 @@ export default function ResultView({
               </div>
             </div>
             <FlagPicker value={card.country} onChange={onCountryChange} />
+            <CardNamePicker value={card.cardName || null} onChange={onNameChange} />
           </div>
           <div style={{ width: CARD_WIDTH }}>
             <CardActions
@@ -190,7 +189,6 @@ export default function ResultView({
               targetRef={captureRef}
               storyRef={storyRef}
               canonicalCountry={canonicalCountry}
-              canonicalName={canonicalName}
             />
           </div>
         </div>

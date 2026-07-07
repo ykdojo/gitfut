@@ -31,14 +31,14 @@ const hash = (s: string): number => {
 // Encode the displayed flag in the share link so the recipient's card matches
 // what the sharer saw (the page re-applies it; an absent/invalid code just
 // falls back to the GitHub-derived default).
-export function cardUrl(card: Card, canonicalCountry?: string, canonicalName?: string): string {
+export function cardUrl(card: Card, canonicalCountry?: string): string {
   const base = `${SITE}/${card.login}`;
   const params = new URLSearchParams();
   if (card.country && card.country !== canonicalCountry) {
     params.set("country", card.country);
   }
-  if (card.name && card.name !== canonicalName) {
-    params.set("name", card.name);
+  if (card.cardName) {
+    params.set("name", card.cardName);
   }
   const query = params.toString();
   return query ? `${base}?${query}` : base;
@@ -56,8 +56,8 @@ export function shareMessage(card: Card): string {
 
 // Per-platform intent URLs. X uses /intent/tweet (NOT /intent/post — the latter
 // loops on mobile). LinkedIn honors only the url; its preview comes from OG tags.
-export function intentUrl(platform: SharePlatform, card: Card, canonicalCountry?: string, canonicalName?: string): string {
-  const url = cardUrl(card, canonicalCountry, canonicalName);
+export function intentUrl(platform: SharePlatform, card: Card, canonicalCountry?: string): string {
+  const url = cardUrl(card, canonicalCountry);
   const text = shareMessage(card);
   switch (platform) {
     case "x":
@@ -82,15 +82,15 @@ export function intentUrl(platform: SharePlatform, card: Card, canonicalCountry?
 }
 
 // Native Web Share API payload (text + url; file added at call site for IG).
-export function nativeSharePayload(card: Card, canonicalCountry?: string, canonicalName?: string): { title: string; text: string; url: string } {
+export function nativeSharePayload(card: Card, canonicalCountry?: string): { title: string; text: string; url: string } {
   return {
     title: "GitFut",
     text: shareMessage(card),
-    url: cardUrl(card, canonicalCountry, canonicalName),
+    url: cardUrl(card, canonicalCountry),
   };
 }
 
 // Kept for backward-compat with any existing import.
-export function shareUrl(card: Card, canonicalCountry?: string, canonicalName?: string): string {
-  return intentUrl("x", card, canonicalCountry, canonicalName);
+export function shareUrl(card: Card, canonicalCountry?: string): string {
+  return intentUrl("x", card, canonicalCountry);
 }

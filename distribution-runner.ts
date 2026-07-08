@@ -6,13 +6,24 @@
 // aggregate ever touches disk: no logins, ids, or per-user rows are stored.
 //
 // Usage:
-//   GH_TOKEN=$(gh auth token) npx tsx distribution-runner.ts --sample 20000
+//   GH_TOKEN=$(gh auth token) npx tsx distribution-runner.ts
 //   GH_TOKEN=... npx tsx distribution-runner.ts --sample 500 --out /tmp/dist.json
+//   GH_TOKEN=... npx tsx distribution-runner.ts --resume
 //   GH_TOKEN=... npx tsx distribution-runner.ts --check torvalds,gaearon
 //
-// --sample N   score N randomly sampled accounts and write the aggregate JSON
-//              (flushed every 100 accounts, so a long run can be stopped and
-//              still leave a valid, smaller-n file)
+// --sample N   attempt N randomly sampled accounts (default 20000, the size of
+//              the original run) and write the aggregate JSON. Flushed every
+//              100 accounts, so an interrupted run still leaves a valid,
+//              smaller-n file.
+// --resume     continue an interrupted run: reload the output file's counts
+//              and keep sampling until --sample total attempts. If the output
+//              file holds an interrupted run (complete: false), a plain rerun
+//              stops and asks for --resume or --fresh; resuming is not
+//              automatic, so that after a scoring change a rerun cannot
+//              silently mix old and new scores. (Duplicate draws across the
+//              resumed halves are possible but, at 20k draws over ~300M ids,
+//              vanishingly rare.)
+// --fresh      discard an interrupted run in the output file and start over
 // --out PATH   output path (default lib/distribution-data.json)
 // --check L,L  validation mode: score the named logins and print their cards
 //              to stderr for comparison against the live site; writes nothing
@@ -24,7 +35,7 @@
 // accounts are scored. A full 20k-account run takes several hours, bounded by
 // the REST (sampling) and GraphQL (scoring) rate limits, which are spent in
 // parallel.
-import { writeFileSync } from "node:fs";
+import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { signalsFromPayload } from "./lib/github/signals";
 import { buildCard } from "./lib/scoring/engine";
 import type { RawPayload, RawRepo } from "./lib/github/client";
@@ -44,7 +55,11 @@ const flag = (name: string) => {
   return i >= 0 ? args[i + 1] : undefined;
 };
 const outFile = flag("--out") ?? "lib/distribution-data.json";
-const sampleN = flag("--sample") ? Number(flag("--sample")) : 0;
+// Attempts, not scored accounts: some sampled logins fail to score (deleted,
+// suspended, GraphQL-invisible), matching the original 20,000 -> n=18,107 run.
+const sampleN = flag("--sample") ? Number(flag("--sample")) : 20_000;
+const resume = args.includes("--resume");
+const fresh = args.includes("--fresh");
 const checkList = flag("--check") ? flag("--check")!.split(",") : [];
 
 async function gql<T>(query: string, login: string): Promise<T | null> {
@@ -242,15 +257,59 @@ async function sampleInto(queue: string[], n: number, state: { done: boolean }) 
 // The aggregate: per-rating counts for the whole sample and for the subset
 // active in the past year (>= 1 contribution). This is the only state that
 // is ever written out.
-const counts = new Array<number>(100 - DIST_MIN).fill(0);
-const activeCounts = new Array<number>(100 - DIST_MIN).fill(0);
+let counts = new Array<number>(100 - DIST_MIN).fill(0);
+let activeCounts = new Array<number>(100 - DIST_MIN).fill(0);
 let n = 0;
 let activeN = 0;
-const runDate = new Date().toISOString().slice(0, 10);
+let attempted = 0;
+let runDate = new Date().toISOString().slice(0, 10);
 
-function flush() {
-  const data = { min: DIST_MIN, date: runDate, n, counts, activeN, activeCounts };
+function flush(complete = false) {
+  const data = { min: DIST_MIN, date: runDate, n, counts, activeN, activeCounts, attempted, complete };
   writeFileSync(outFile, JSON.stringify(data, null, 2) + "\n");
+}
+
+// A plain run refuses to clobber an interrupted one; the choice between
+// continuing it and discarding it has to be made explicitly.
+function guardInterrupted() {
+  if (resume || fresh || !existsSync(outFile)) return;
+  let prev: { complete?: boolean; n?: number; attempted?: number };
+  try {
+    prev = JSON.parse(readFileSync(outFile, "utf8"));
+  } catch {
+    return;
+  }
+  if (prev.complete === false) {
+    throw new Error(
+      `${outFile} holds an interrupted run (n=${prev.n}, ${prev.attempted} attempted). ` +
+        `Pass --resume to continue it or --fresh to discard it and start over.`,
+    );
+  }
+}
+
+// Reload a previous run's aggregate so sampling continues toward --sample
+// total attempts. The sample date stays the original run's.
+function loadResume() {
+  if (!existsSync(outFile)) {
+    console.error(`--resume: ${outFile} does not exist, starting fresh`);
+    return;
+  }
+  const prev = JSON.parse(readFileSync(outFile, "utf8")) as {
+    min: number;
+    date: string;
+    n: number;
+    counts: number[];
+    activeN: number;
+    activeCounts: number[];
+    attempted?: number;
+  };
+  if (prev.min !== DIST_MIN || prev.counts.length !== 100 - DIST_MIN) {
+    throw new Error(`--resume: ${outFile} has an incompatible shape`);
+  }
+  ({ n, activeN, counts, activeCounts } = prev);
+  runDate = prev.date;
+  attempted = prev.attempted ?? prev.n;
+  console.error(`resuming from ${outFile}: n=${n}, ${attempted}/${sampleN} attempted`);
 }
 
 async function scoreOne(login: string): Promise<void> {
@@ -288,13 +347,20 @@ async function main() {
     await check(checkList);
     return;
   }
-  if (!sampleN) throw new Error("pass --sample N or --check login[,login]");
+  guardInterrupted();
+  if (resume) loadResume();
+  const remaining = sampleN - attempted;
+  if (remaining <= 0) {
+    console.error(`nothing to do: ${attempted}/${sampleN} already attempted`);
+    return;
+  }
   const queue: string[] = [];
   const state = { done: false };
-  console.error(`sampling and scoring ${sampleN} users -> ${outFile}`);
+  console.error(`sampling and scoring ${remaining} users -> ${outFile}`);
+  const startedN = n;
   const started = Date.now();
   await Promise.all([
-    sampleInto(queue, sampleN, state),
+    sampleInto(queue, remaining, state),
     ...Array.from({ length: CONCURRENCY }, async () => {
       while (!state.done || queue.length) {
         const login = queue.shift();
@@ -302,6 +368,7 @@ async function main() {
           await new Promise((r) => setTimeout(r, 500));
           continue;
         }
+        attempted++;
         try {
           await scoreOne(login);
         } catch (e) {
@@ -309,14 +376,17 @@ async function main() {
         }
         if (n % FLUSH_EVERY === 0) flush();
         if (n % 50 === 0) {
-          const rate = (n / ((Date.now() - started) / 3_600_000)).toFixed(0);
-          console.error(`scored ${n}/${sampleN} (${rate}/hr, queue ${queue.length})`);
+          const rate = ((n - startedN) / ((Date.now() - started) / 3_600_000)).toFixed(0);
+          console.error(`scored ${n} of ${attempted}/${sampleN} attempted (${rate}/hr, queue ${queue.length})`);
         }
       }
     }),
   ]);
-  flush();
-  console.error(`done: n=${n}, active=${activeN} -> ${outFile}`);
+  flush(true);
+  console.error(`done: n=${n}, active=${activeN}, attempted=${attempted}/${sampleN} -> ${outFile}`);
 }
 
-main();
+main().catch((e: Error) => {
+  console.error(e.message);
+  process.exit(1);
+});
